@@ -60,6 +60,26 @@ jobs:
       - name: build
         run: npm run build
 
+      - name: Debug ipfs directory (before)
+        run: |
+          IPFS_DIR="$(pwd)/ipfs"
+          echo "Current directory: $(pwd)"
+          if [ -d "$IPFS_DIR" ]; then
+            echo "Listing ipfs directory:"
+            ls -lAh "$IPFS_DIR"
+            echo ""
+            echo "Directory structure (tree):"
+            tree "$IPFS_DIR" || true
+            echo ""
+            echo "Disk usage summary:"
+            du -sh "$IPFS_DIR"
+            echo ""
+            echo "Preview up to 5 files with head:"
+            find "$IPFS_DIR" -type f | head -5 | xargs -I{} sh -c 'echo "---- {} ----"; head -20 "{}" || true'
+          else
+            echo "Directory $IPFS_DIR does not exist."
+          fi
+
       - name: export-static (branch)
         run: >
           npm run export-static -- \
@@ -68,45 +88,65 @@ jobs:
             --baseUrl '${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs' \
             --destination "$(pwd)/ipfs"
 
-      - name: upload to s3
-        run: >
-          npx @dcl/cdn-uploader@next \
-              --bucket ${{ secrets.SDK_TEAM_S3_BUCKET }} \
-              --local-folder "$(pwd)/ipfs" \
-              --bucket-folder 'ipfs'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.SDK_TEAM_AWS_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SDK_TEAM_AWS_SECRET }}
+      - name: Debug ipfs directory (after)
+        run: |
+          IPFS_DIR="$(pwd)/ipfs"
+          echo "Current directory: $(pwd)"
+          if [ -d "$IPFS_DIR" ]; then
+            echo "Listing ipfs directory:"
+            ls -lAh "$IPFS_DIR"
+            echo ""
+            echo "Directory structure (tree):"
+            tree "$IPFS_DIR" || true
+            echo ""
+            echo "Disk usage summary:"
+            du -sh "$IPFS_DIR"
+            echo ""
+            echo "Preview up to 5 files with head:"
+            find "$IPFS_DIR" -type f | head -5 | xargs -I{} sh -c 'echo "---- {} ----"; head -20 "{}" || true'
+          else
+            echo "Directory $IPFS_DIR does not exist."
+          fi
 
-      - name: Asset Bundle converter queue AllPlataforms
-        if: github.event_name != 'pull_request'
-        run: >
-          npx @dcl/opscli queue-ab-conversion-about \
-            --token ${{ secrets.AB_TOKEN }} \
-            --prioritize \
-            --about-url ${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs/${{steps.get-branch-realm-name.outputs.result}}/about
+      # - name: upload to s3
+      #   run: >
+      #     npx @dcl/cdn-uploader@next \
+      #         --bucket ${{ secrets.SDK_TEAM_S3_BUCKET }} \
+      #         --local-folder "$(pwd)/ipfs" \
+      #         --bucket-folder 'ipfs'
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.SDK_TEAM_AWS_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.SDK_TEAM_AWS_SECRET }}
 
-      - name: Find Comment
-        uses: peter-evans/find-comment@v1
-        if: github.event_name == 'pull_request'
-        id: fc
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: Test this pull request
+      # - name: Asset Bundle converter queue AllPlataforms
+      #   if: github.event_name != 'pull_request'
+      #   run: >
+      #     npx @dcl/opscli queue-ab-conversion-about \
+      #       --token ${{ secrets.AB_TOKEN }} \
+      #       --prioritize \
+      #       --about-url ${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs/${{steps.get-branch-realm-name.outputs.result}}/about
 
-      - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@v1
-        if: github.event_name == 'pull_request'
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ## Test this pull request
-            - [Test in-world](https://play.decentraland.zone/?realm=${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs/${{steps.get-branch-realm-name.outputs.result}})
-            - Or use this chat command to switch the realm
-              ```bash
-              /goto ${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs/${{steps.get-branch-realm-name.outputs.result}}
-              ```
-            This PR has been published using the `@dcl/sdk` version `${{ inputs.dcl-sdk-package }}`
-          edit-mode: replace
+      # - name: Find Comment
+      #   uses: peter-evans/find-comment@v1
+      #   if: github.event_name == 'pull_request'
+      #   id: fc
+      #   with:
+      #     issue-number: ${{ github.event.pull_request.number }}
+      #     comment-author: 'github-actions[bot]'
+      #     body-includes: Test this pull request
+
+      # - name: Create or update comment
+      #   uses: peter-evans/create-or-update-comment@v1
+      #   if: github.event_name == 'pull_request'
+      #   with:
+      #     comment-id: ${{ steps.fc.outputs.comment-id }}
+      #     issue-number: ${{ github.event.pull_request.number }}
+      #     body: |
+      #       ## Test this pull request
+      #       - [Test in-world](https://play.decentraland.zone/?realm=${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs/${{steps.get-branch-realm-name.outputs.result}})
+      #       - Or use this chat command to switch the realm
+      #         ```bash
+      #         /goto ${{ secrets.SDK_TEAM_S3_BASE_URL }}/ipfs/${{steps.get-branch-realm-name.outputs.result}}
+      #         ```
+      #       This PR has been published using the `@dcl/sdk` version `${{ inputs.dcl-sdk-package }}`
+      #     edit-mode: replace
